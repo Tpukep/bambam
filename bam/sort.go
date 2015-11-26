@@ -1,4 +1,4 @@
-package main
+package bam
 
 type ByFinalOrder []*Field
 

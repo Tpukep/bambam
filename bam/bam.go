@@ -1,4 +1,4 @@
-package main
+package bam
 
 import (
 	"bytes"
@@ -20,14 +20,14 @@ import (
 type Extractor struct {
 	fieldCount  int
 	out         bytes.Buffer
-	pkgName     string
+	PkgName     string
 	importDecl  string
-	fieldPrefix string
-	fieldSuffix string
+	FieldPrefix string
+	FieldSuffix string
 
 	curStruct      *Struct
 	heldComment    string
-	extractPrivate bool
+	ExtractPrivate bool
 
 	// map structs' goName <-> capName
 	goType2capTypeCache map[string]string
@@ -44,10 +44,10 @@ type Extractor struct {
 	SliceToListCode map[string][]byte
 	ListToSliceCode map[string][]byte
 
-	compileDir *TempDir
-	outDir     string
+	CompileDir *TempDir
+	OutDir     string
 	srcFiles   []*SrcFile
-	overwrite  bool
+	Overwrite  bool
 
 	// fields for testing capid tagging
 	PubABC int `capid:"1"`
@@ -57,7 +57,7 @@ type Extractor struct {
 
 func NewExtractor() *Extractor {
 	return &Extractor{
-		pkgName:             "testpkg",
+		PkgName:             "testpkg",
 		importDecl:          "testpkg",
 		goType2capTypeCache: make(map[string]string),
 		capType2goType:      make(map[string]string),
@@ -68,7 +68,6 @@ func NewExtractor() *Extractor {
 		SaveCode:        make(map[string][]byte),
 		LoadCode:        make(map[string][]byte),
 		srs:             make(map[string]*Struct),
-		compileDir:      NewTempDir(),
 		srcFiles:        make([]*SrcFile, 0),
 		SliceToListCode: make(map[string][]byte),
 		ListToSliceCode: make(map[string][]byte),
@@ -76,8 +75,8 @@ func NewExtractor() *Extractor {
 }
 
 func (x *Extractor) Cleanup() {
-	if x.compileDir != nil {
-		x.compileDir.Cleanup()
+	if x.CompileDir != nil {
+		x.CompileDir.Cleanup()
 	}
 }
 
@@ -250,10 +249,10 @@ func %sGoToCapn(seg *capn.Segment, src *%s) %s {
 }
 
 func (x *Extractor) packageDot() string {
-	if x.pkgName == "" || x.pkgName == "main" {
+	if x.PkgName == "" || x.PkgName == "main" {
 		return ""
 	}
-	return x.pkgName + "."
+	return x.PkgName + "."
 }
 
 func (x *Extractor) SettersToGo(goName string) string {
@@ -539,7 +538,7 @@ func (x *Extractor) WriteToSchema(w io.Writer) (n int64, err error) {
 
 	for _, s := range sortedStructs {
 
-		m, err = fmt.Fprintf(w, "%sstruct %s { %s", x.fieldSuffix, s.capName, x.fieldSuffix)
+		m, err = fmt.Fprintf(w, "%sstruct %s { %s", x.FieldSuffix, s.capName, x.FieldSuffix)
 		n += int64(m)
 		if err != nil {
 			return
@@ -563,8 +562,8 @@ func (x *Extractor) WriteToSchema(w io.Writer) (n int64, err error) {
 				VPrintf("\n\n debug: already = true, capType = '%s'   fld.capType = %v\n", capType, fld.capType)
 			}
 
-			m, err = fmt.Fprintf(w, "%s%s  %s@%d: %s%s; %s", x.fieldPrefix, fld.capname, spaces, fld.finalOrder, ExtraSpaces(i), fld.capType, x.fieldSuffix)
-			//m, err = fmt.Fprintf(w, "%s%s  %s@%d: %s%s; %s", x.fieldPrefix, fld.capname, spaces, fld.finalOrder, ExtraSpaces(i), capType, x.fieldSuffix)
+			m, err = fmt.Fprintf(w, "%s%s  %s@%d: %s%s; %s", x.FieldPrefix, fld.capname, spaces, fld.finalOrder, ExtraSpaces(i), fld.capType, x.FieldSuffix)
+			//m, err = fmt.Fprintf(w, "%s%s  %s@%d: %s%s; %s", x.FieldPrefix, fld.capname, spaces, fld.finalOrder, ExtraSpaces(i), capType, x.FieldSuffix)
 			n += int64(m)
 			if err != nil {
 				return
@@ -572,7 +571,7 @@ func (x *Extractor) WriteToSchema(w io.Writer) (n int64, err error) {
 
 		} // end field loop
 
-		m, err = fmt.Fprintf(w, "} %s", x.fieldSuffix)
+		m, err = fmt.Fprintf(w, "} %s", x.FieldSuffix)
 		n += int64(m)
 		if err != nil {
 			return
@@ -638,15 +637,15 @@ func (x *Extractor) CopySourceFilesAddCapidTag() error {
 	// run through files, printing
 	for _, s := range x.srcFiles {
 		if s.filename != "" {
-			err := x.PrettyPrint(s.fset, s.astFile, x.compileDir.DirPath+string(os.PathSeparator)+s.filename)
+			err := x.PrettyPrint(s.fset, s.astFile, x.CompileDir.DirPath+string(os.PathSeparator)+s.filename)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	if x.overwrite {
-		bk := fmt.Sprintf("%s%cbk%c", x.compileDir.DirPath, os.PathSeparator, os.PathSeparator)
+	if x.Overwrite {
+		bk := fmt.Sprintf("%s%cbk%c", x.CompileDir.DirPath, os.PathSeparator, os.PathSeparator)
 		err := os.MkdirAll(bk, 0755)
 		if err != nil {
 			panic(err)
@@ -659,7 +658,7 @@ func (x *Extractor) CopySourceFilesAddCapidTag() error {
 					panic(err)
 				}
 				// overwrite
-				err = Cp(x.compileDir.DirPath+string(os.PathSeparator)+s.filename, s.filename)
+				err = Cp(x.CompileDir.DirPath+string(os.PathSeparator)+s.filename, s.filename)
 				if err != nil {
 					panic(err)
 				}
@@ -1015,7 +1014,7 @@ func (x *Extractor) StartStruct(goName string) error {
 		return err
 	}
 
-	fmt.Fprintf(&x.out, "struct %s { %s", capname, x.fieldSuffix)
+	fmt.Fprintf(&x.out, "struct %s { %s", capname, x.FieldSuffix)
 
 	x.curStruct = NewStruct(capname, goName)
 	x.curStruct.comment = x.heldComment
@@ -1025,7 +1024,7 @@ func (x *Extractor) StartStruct(goName string) error {
 	return nil
 }
 func (x *Extractor) EndStruct() {
-	fmt.Fprintf(&x.out, "} %s", x.fieldSuffix)
+	fmt.Fprintf(&x.out, "} %s", x.FieldSuffix)
 }
 
 func (x *Extractor) GenerateComment(c string) {
@@ -1077,7 +1076,7 @@ func (x *Extractor) GenerateStructField(goFieldName string, goFieldTypePrefix st
 
 	// if we are ignoring private (lowercase first letter) fields, then stop here.
 	if !IsEmbedded {
-		if len(goFieldName) > 0 && unicode.IsLower([]rune(goFieldName)[0]) && !x.extractPrivate {
+		if len(goFieldName) > 0 && unicode.IsLower([]rune(goFieldName)[0]) && !x.ExtractPrivate {
 			return nil
 		}
 	}
@@ -1153,7 +1152,7 @@ func (x *Extractor) GenerateStructField(goFieldName string, goFieldTypePrefix st
 	var capnTypeDisplayed string
 	curField.capTypeSeq, capnTypeDisplayed = x.GoTypeToCapnpType(curField, goTypeSeq)
 
-	VPrintf("\n\n\n DEBUG:  '%s' '%s' @%d: %s; %s\n\n", x.fieldPrefix, loweredName, x.fieldCount, capnTypeDisplayed, x.fieldSuffix)
+	VPrintf("\n\n\n DEBUG:  '%s' '%s' @%d: %s; %s\n\n", x.FieldPrefix, loweredName, x.fieldCount, capnTypeDisplayed, x.FieldSuffix)
 
 	sz := len(loweredName)
 	if sz > x.curStruct.longestField {
@@ -1356,7 +1355,7 @@ func (x *Extractor) GenCapnpHeader() *bytes.Buffer {
 using Go = import "go.capnp";
 $Go.package("%s");
 $Go.import("%s");
-%s`, id, x.pkgName, x.importDecl, x.fieldSuffix)
+%s`, id, x.PkgName, x.importDecl, x.FieldSuffix)
 
 	return &by
 }
@@ -1378,12 +1377,12 @@ func CapnpCompileFragment(in []byte) ([]byte, error, *Extractor) {
 
 func (x *Extractor) CapnpCompileFragment(in []byte) ([]byte, error) {
 
-	if x.compileDir != nil {
-		x.compileDir.Cleanup()
+	if x.CompileDir != nil {
+		x.CompileDir.Cleanup()
 	}
-	x.compileDir = NewTempDir()
+	x.CompileDir = NewTempDir()
 
-	f := x.compileDir.TempFile()
+	f := x.CompileDir.TempFile()
 
 	by := x.AssembleCapnpFile(in)
 	debug := string(by.Bytes())

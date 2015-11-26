@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/tpukep/bambam/bam"
 )
 
 func use() {
@@ -50,7 +52,7 @@ func MainArgs(args []string) {
 	flag.Parse()
 
 	if debug != nil {
-		Verbose = *debug
+		bam.Verbose = *debug
 	}
 
 	if verrequest != nil && *verrequest {
@@ -63,7 +65,7 @@ func MainArgs(args []string) {
 		use()
 	}
 
-	if !DirExists(*outdir) {
+	if !bam.DirExists(*outdir) {
 		err := os.MkdirAll(*outdir, 0755)
 		if err != nil {
 			panic(err)
@@ -90,15 +92,15 @@ func MainArgs(args []string) {
 		}
 	}
 
-	x := NewExtractor()
-	x.fieldPrefix = "   "
-	x.fieldSuffix = "\n"
-	x.outDir = *outdir
+	x := bam.NewExtractor()
+	x.FieldPrefix = "   "
+	x.FieldSuffix = "\n"
+	x.OutDir = *outdir
 	if privs != nil {
-		x.extractPrivate = *privs
+		x.ExtractPrivate = *privs
 	}
 	if overwrite != nil {
-		x.overwrite = *overwrite
+		x.Overwrite = *overwrite
 	}
 
 	for _, inFile := range inputFiles {
@@ -108,12 +110,13 @@ func MainArgs(args []string) {
 		}
 	}
 	// get rid of default tmp dir
-	x.compileDir.Cleanup()
+	x.CompileDir = bam.NewTempDir()
+	x.CompileDir.Cleanup()
 
-	x.compileDir.DirPath = *outdir
-	x.pkgName = *pkg
+	x.CompileDir.DirPath = *outdir
+	x.PkgName = *pkg
 
-	schemaFN := x.compileDir.DirPath + "/schema.capnp"
+	schemaFN := x.CompileDir.DirPath + "/schema.capnp"
 	schemaFile, err := os.Create(schemaFN)
 	if err != nil {
 		panic(err)
@@ -133,7 +136,7 @@ func MainArgs(args []string) {
 
 	// translator library of go functions is separate from the schema
 
-	translateFn := x.compileDir.DirPath + "/translateCapn.go"
+	translateFn := x.CompileDir.DirPath + "/translateCapn.go"
 	translatorFile, err := os.Create(translateFn)
 	if err != nil {
 		panic(err)
@@ -146,7 +149,7 @@ import (
   "io"
 )
 
-`, x.pkgName)
+`, x.PkgName)
 
 	_, err = x.WriteToTranslators(translatorFile)
 	if err != nil {
@@ -158,6 +161,6 @@ import (
 		panic(err)
 	}
 
-	exec.Command("cp", "-p", "go.capnp", x.compileDir.DirPath).Run()
-	fmt.Printf("generated files in '%s'\n", x.compileDir.DirPath)
+	exec.Command("cp", "-p", "go.capnp", x.CompileDir.DirPath).Run()
+	fmt.Printf("generated files in '%s'\n", x.CompileDir.DirPath)
 }
